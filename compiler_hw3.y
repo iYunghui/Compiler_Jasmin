@@ -17,6 +17,10 @@
     int isArray = 0;
     int address = 0;
     int label = 0;
+    int fornum = 0;
+    int forinit = 0;
+    int forpostnum = 0;
+    int ifnum = 0;
     int scope_level = 0, next_level = 1;
     struct SymbolTable table[100];
     char *TYPE = "";
@@ -25,6 +29,8 @@
     char *ELEMENT = "-";
     char *assign_operation = "";
     char *id = "";
+    char forpost1[1024] = {'\0'};
+    char forpost2[1024] = {'\0'};
     FILE *jasmin_file;
 
     /* Symbol table function - you can add new function if needed. */
@@ -118,26 +124,65 @@ ExpressionStmt
 ;
 
 IncDecStmt
-    : Expression INC { printf("INC\n"); 
+    : Expression INC { printf("INC\n");
+                       char forpost[1024] = {'\0'};
                        if(strcmp($1, "int32")==0 || strcmp($1, "li_int32")==0) {
-                           fprintf(jasmin_file, "ldc 1\n");
-                           fprintf(jasmin_file, "iadd\n");
+                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                               strcat(forpost, "ldc 1\n");
+                               strcat(forpost, "iadd\n\n");
+                           }
+                           else {
+                               fprintf(jasmin_file, "ldc 1\n");
+                               fprintf(jasmin_file, "iadd\n");
+                           }
                        }
                        else {
-                           fprintf(jasmin_file, "ldc 1.0\n");
-                           fprintf(jasmin_file, "fadd\n"); 
+                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                               strcat(forpost, "ldc 1.0\n");
+                               strcat(forpost, "fadd\n\n");
+                           }
+                           else {
+                               fprintf(jasmin_file, "ldc 1.0\n");
+                               fprintf(jasmin_file, "fadd\n"); 
+                           }
+                       }
+                       if(forpostnum == 1) {
+                           strcat(forpost1, forpost);
+                       }
+                       else if(forpostnum == 2) {
+                           strcat(forpost2, forpost);
                        }
                        isAssign = 1;
+                       printf("&&&&&&&& %d %d\n", forpostnum, scope_level);
                        lookup_symbol(id, ""); 
                        isAssign = 0;}
     | Expression DEC { printf("DEC\n");
+                       char forpost[1024] = {'\0'};
                        if(strcmp($1, "int32")==0 || strcmp($1, "li_int32")==0) {
-                           fprintf(jasmin_file, "ldc 1\n");
-                           fprintf(jasmin_file, "isub\n");
+                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                               strcat(forpost, "ldc 1\n");
+                               strcat(forpost, "isub\n\n");
+                           }
+                           else {
+                               fprintf(jasmin_file, "ldc 1\n");
+                               fprintf(jasmin_file, "isub\n");
+                           }
                        }
                        else {
-                           fprintf(jasmin_file, "ldc 1.0\n");
-                           fprintf(jasmin_file, "fsub\n"); 
+                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                               strcat(forpost, "ldc 1.0\n");
+                               strcat(forpost, "fsub\n\n");
+                           }
+                           else {
+                               fprintf(jasmin_file, "ldc 1.0\n");
+                               fprintf(jasmin_file, "fsub\n"); 
+                           }
+                       }
+                       if(forpostnum == 1) {
+                           strcat(forpost1, forpost);
+                       }
+                       else if(forpostnum == 2) {
+                           strcat(forpost2, forpost);
                        }
                        isAssign = 1;
                        lookup_symbol(id, ""); 
@@ -148,7 +193,34 @@ Block
     : '{' '}'
 	| '{' Block_list '}' { dump_symbol(scope_level); 
                            scope_level--; 
-                           next_level--; }
+                           next_level--; 
+                           if(fornum > 0) {
+                               if(forinit == 1) {
+                                   fprintf(jasmin_file, "%s", forpost1);
+                                   printf("+++++%s\n", forpost1);
+                                   printf("++++++++++++++\n");
+                                   forpost1[0] = '\0';
+                               }
+                               else if(forinit == 2) {
+                                   fprintf(jasmin_file, "%s", forpost2);
+
+                                   printf("-----%s\n", forpost2);
+                                   printf("--------------\n");
+                                   forpost2[0] = '\0';
+                               }
+                               char temp[20];
+                               if(forinit > 0)
+                                   sprintf(temp, "L_for_begin_init%d", forinit);
+                               else
+                                   sprintf(temp, "L_for_begin%d", fornum);
+                               fprintf(jasmin_file, "goto %s\n", temp);
+                           }
+                           if(ifnum > 0) {
+                               char temp[20];
+                               sprintf(temp, "L_if_exit%d", ifnum);
+                               fprintf(jasmin_file, "goto %s\n", temp); 
+                               sprintf(temp, "L_if_false%d", ifnum);
+                               fprintf(jasmin_file, "%s:\n", temp);}}
 ;
 
 Block_list
@@ -161,9 +233,22 @@ Block_item
 ;
 
 IfStmt
-    : IF Condition Block ELSE IfStmt
-    | IF Condition Block ELSE Block
-    | IF Condition Block
+    : IFsym Condition Block ELSE IfStmt { char temp[20];
+                                          sprintf(temp, "L_if_exit%d", ifnum);
+                                          fprintf(jasmin_file, "%s:\n", temp); 
+                                          ifnum--; }
+    | IFsym Condition Block ELSE Block  { char temp[20];
+                                          sprintf(temp, "L_if_exit%d", ifnum);
+                                          fprintf(jasmin_file, "%s:\n", temp); 
+                                          ifnum--; }
+    | IFsym Condition Block             { char temp[20];
+                                          sprintf(temp, "L_if_exit%d", ifnum);
+                                          fprintf(jasmin_file, "%s:\n", temp); 
+                                          ifnum--; }  
+;
+
+IFsym
+    : IF { ifnum++; }
 ;
 
 Condition
@@ -171,16 +256,39 @@ Condition
                        printf("error:%d: non-bool (type %s) used as for condition\n", yylineno+1, $1); 
                        HAS_ERROR = 1;
                    }
+                   if(fornum > 0) {
+                       char temp[20];
+                       sprintf(temp, "L_for_exit%d", fornum);
+                       fprintf(jasmin_file, "ifeq %s\n", temp);
+                   }
+                   if(ifnum > 0) {
+                       char temp[20];
+                       sprintf(temp, "L_if_false%d", ifnum);
+                       fprintf(jasmin_file, "ifeq %s\n", temp);}
                  }
 ;
 
 ForStmt
-    : FOR Condition Block
-    | FOR ForClause Block
+    : FORsym Condition Block { char temp[20];
+                               sprintf(temp, "L_for_exit%d", fornum);
+                               fprintf(jasmin_file, "%s:\n", temp); fornum--; }
+    | FORsym ForClause Block { char temp[20];
+                               sprintf(temp, "L_for_exit%d", fornum);
+                               fprintf(jasmin_file, "%s:\n", temp); fornum--; forinit--; if(forinit==0) forpostnum = 0;}
+;
+
+FORsym
+    : FOR { fornum++; 
+            char temp[20];
+            sprintf(temp, "L_for_begin%d", fornum);
+            fprintf(jasmin_file, "%s:\n", temp); }
 ;
 
 ForClause
-    : InitStmt ';' Condition ';' PostStmt
+    : InitStmt { forinit++; 
+                 char temp[20];
+                 sprintf(temp, "L_for_begin_init%d", forinit);
+                 fprintf(jasmin_file, "%s:\n", temp); } ';' Condition { forpostnum++;} ';' PostStmt 
 ;
 
 InitStmt
@@ -360,14 +468,22 @@ AdditionExpr
 
 ComparisonExpr
     : AdditionExpr { $$ = $1; }
-    | ComparisonExpr EQL ComparisonExpr { $$ = "bool"; printf("%s\n", "EQL"); }
+    | ComparisonExpr EQL ComparisonExpr { $$ = "bool"; printf("%s\n", "EQL"); 
+                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
+                                              jasmin_label("float32", "==");
+                                          else
+                                              jasmin_label("int32", "==");}
     | ComparisonExpr NEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "NEQ"); }
     | ComparisonExpr '<' ComparisonExpr { $$ = "bool"; printf("%s\n", "LSS"); 
                                           if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
                                               jasmin_label("float32", "<");
                                           else
                                               jasmin_label("int32", "<");}
-    | ComparisonExpr LEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "LEQ"); }
+    | ComparisonExpr LEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "LEQ"); 
+                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
+                                              jasmin_label("float32", "<=");
+                                          else
+                                              jasmin_label("int32", "<=");}
     | ComparisonExpr '>' ComparisonExpr { $$ = "bool"; printf("%s\n", "GTR");  
                                           if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
                                               jasmin_label("float32", ">");
@@ -601,36 +717,101 @@ static void lookup_symbol(char* name, char* type) {
         for(j=0; j<num; j++) {
             if(strcmp(name, table[i].name[j])==0 && (strcmp(type, table[i].type[j])==0 || strcmp(type, "")==0)) {
                 printf("IDENT (name=%s, address=%d)\n", name, table[i].address[j]);
-                if(isAssign==0 && isArray==0) {
-                    if(strcmp("int32", table[i].type[j]) == 0)
-                        fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
-                    else if(strcmp("float32", table[i].type[j]) == 0)
-                        fprintf(jasmin_file, "fload %d\n", table[i].address[j]);
-                    else if(strcmp("bool", table[i].type[j]) == 0)
-                        fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
-                    else if(strcmp("array", table[i].type[j]) == 0)
-                        fprintf(jasmin_file, "aload %d\n", table[i].address[j]);
-                }
-                else if(isAssign==0 && isArray==2) {
-                    if(strcmp("array", table[i].type[j]) == 0) {
-                        if(strcmp("int32", table[i].element_type[j]) == 0)
-                            fprintf(jasmin_file, "iaload\n");
-                        else if(strcmp("float32", table[i].element_type[j]) == 0)
-                            fprintf(jasmin_file, "faload\n");
+                if((forpostnum-1)==scope_level && forpostnum>0) {
+                    char forpost[1024] = {'\0'};
+                    if(isAssign==0 && isArray==0) {
+                        if(strcmp("int32", table[i].type[j]) == 0) {
+                            char temp[256];
+                            sprintf(temp, "iload %d\n", table[i].address[j]);
+                            strcat(forpost, temp);
+                        }
+                        else if(strcmp("float32", table[i].type[j]) == 0) {
+                            char temp[256];
+                            sprintf(temp, "fload %d\n", table[i].address[j]);
+                            strcat(forpost, temp);
+                        }
+                        else if(strcmp("bool", table[i].type[j]) == 0) {
+                            char temp[256];
+                            sprintf(temp, "iload %d\n", table[i].address[j]);
+                            strcat(forpost, temp);
+                        }
+                        else if(strcmp("array", table[i].type[j]) == 0) {
+                            char temp[256];
+                            sprintf(temp, "aload %d\n", table[i].address[j]);
+                            strcat(forpost, temp);
+                        }
                     }
+                    else if(isAssign==0 && isArray==2) {
+                        if(strcmp("array", table[i].type[j]) == 0) {
+                            if(strcmp("int32", table[i].element_type[j]) == 0)
+                                strcat(forpost, "iaload\n");
+                            else if(strcmp("float32", table[i].element_type[j]) == 0)
+                                strcat(forpost, "faload\n");
+                        }
+                    }
+                    else if(isArray == 0) {
+                        if(strcmp("int32", table[i].type[j]) == 0) {
+                            char temp[256];
+                            sprintf(temp, "istore %d\n", table[i].address[j]);
+                            strcat(forpost, temp);
+                        }
+                        else if(strcmp("float32", table[i].type[j]) == 0) {
+                            char temp[256];
+                            sprintf(temp, "fstore %d\n", table[i].address[j]);
+                            strcat(forpost, temp);
+                        }
+                        else if(strcmp("bool", table[i].type[j]) == 0) {
+                            char temp[256];
+                            sprintf(temp, "istore %d\n", table[i].address[j]);
+                            strcat(forpost, temp);
+                        }
+                        else if(strcmp("array", table[i].type[j]) == 0) {
+                            if(strcmp("int32", table[i].element_type[j]) == 0)
+                                strcat(forpost, "iastore\n");
+                            else if(strcmp("float32", table[i].element_type[j]) == 0)
+                                strcat(forpost, "fastore\n");
+                        }
+                    }
+                    if(forinit == 1)
+                        strcat(forpost1, forpost);
+                    else
+                        strcat(forpost2, forpost);
+
+                    printf("++++++%s", forpost);
+                    forpost[0] = '\0';
                 }
-                else if(isArray == 0) {
-                    if(strcmp("int32", table[i].type[j]) == 0)
-                        fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
-                    else if(strcmp("float32", table[i].type[j]) == 0)
-                        fprintf(jasmin_file, "fstore %d\n", table[i].address[j]);
-                    else if(strcmp("bool", table[i].type[j]) == 0)
-                        fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
-                    else if(strcmp("array", table[i].type[j]) == 0) {
-                        if(strcmp("int32", table[i].element_type[j]) == 0)
-                            fprintf(jasmin_file, "iastore\n");
-                        else if(strcmp("float32", table[i].element_type[j]) == 0)
-                            fprintf(jasmin_file, "fastore\n");
+                else {
+                    if(isAssign==0 && isArray==0) {
+                        if(strcmp("int32", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
+                        else if(strcmp("float32", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "fload %d\n", table[i].address[j]);
+                        else if(strcmp("bool", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
+                        else if(strcmp("array", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "aload %d\n", table[i].address[j]);
+                    }
+                    else if(isAssign==0 && isArray==2) {
+                        if(strcmp("array", table[i].type[j]) == 0) {
+                            if(strcmp("int32", table[i].element_type[j]) == 0)
+                                fprintf(jasmin_file, "iaload\n");
+                            else if(strcmp("float32", table[i].element_type[j]) == 0)
+                                fprintf(jasmin_file, "faload\n");
+                        }
+                    }
+                    else if(isArray == 0) {
+                        if(strcmp("int32", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
+                        else if(strcmp("float32", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "fstore %d\n", table[i].address[j]);
+                        else if(strcmp("bool", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
+                        else if(strcmp("array", table[i].type[j]) == 0) {
+                            if(strcmp("int32", table[i].element_type[j]) == 0)
+                                fprintf(jasmin_file, "iastore\n");
+                            else if(strcmp("float32", table[i].element_type[j]) == 0)
+                                fprintf(jasmin_file, "fastore\n");
+                        }
                     }
                 }
                 if(isArray != 1)
@@ -676,10 +857,12 @@ static void cast_symbol() {
     if(strcmp(TYPE, "float32")==0) {
         printf("%s to F\n", PrintType);
         fprintf(jasmin_file, "i2f\n");
+        PrintType = "float32";
     }
     else if(strcmp(TYPE, "int32")==0) {
         printf("%s to I\n", PrintType);
         fprintf(jasmin_file, "f2i\n");
+        PrintType = "int32";
     }
 
     literal_type = "";
@@ -711,7 +894,14 @@ static void jasmin_label(char* type, char* op) {
         fprintf(jasmin_file, "f2i\n");
     }
 
-    fprintf(jasmin_file, "ifgt %s\n", label_name);
+    if(strcmp(op, "<") == 0)
+        fprintf(jasmin_file, "iflt %s\n", label_name);
+    else if(strcmp(op, "<=") == 0)
+        fprintf(jasmin_file, "ifle %s\n", label_name);
+    else if(strcmp(op, "==") == 0)
+        fprintf(jasmin_file, "ifeq %s\n", label_name);
+    else
+        fprintf(jasmin_file, "ifgt %s\n", label_name);
     fprintf(jasmin_file, "iconst_0\n");
     fprintf(jasmin_file, "goto %s\n", next_label_name);
     fprintf(jasmin_file, "%s:\n", label_name);
