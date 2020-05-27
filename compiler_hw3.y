@@ -25,7 +25,6 @@
     struct SymbolTable table[100];
     char *TYPE = "";
     char *PrintType = "";
-    char *literal_type = "";
     char *ELEMENT = "-";
     char *assign_operation = "";
     char *id = "";
@@ -41,7 +40,9 @@
     static void cast_symbol();
     static void dump_symbol(int level);
 
-    static void jasmin_label(char* type, char* op);
+    static char* isForI(char* type1, char* type2);
+    static char* li_int32_Change_int32(char* type);
+    static void jasmin_label(char* type1, char* type2, char* op);
 
     /* Global variables */
     int HAS_ERROR = 0;
@@ -58,7 +59,6 @@
     char *s_val;
     char *id_val;
     char *type_val;
-    /* ... */
 }
 
 /* Token without return */
@@ -84,7 +84,7 @@
 
 /* Nonterminal with return, which need to sepcify type */
 %type <s_val> Literal MultiplicationExpr UnaryExpr AdditionExpr Operand PrimaryExpr ComparisonExpr
-%type <s_val> Type LogicalOrExpr LogicalAndExpr Expression ConversionExpr
+%type <s_val> Type LogicalOrExpr LogicalAndExpr Expression ConversionExpr IndexExpr
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -113,10 +113,8 @@ Statement
 
 DeclarationStmt
     : VAR IDENT Type '=' Expression { isAssign = 1;
-                                      create_symbol($2, TYPE, scope_level);
-                                      literal_type = ""; }
-    | VAR IDENT Type                { create_symbol($2, TYPE, scope_level);
-                                      literal_type = ""; }
+                                      create_symbol($2, TYPE, scope_level);}
+    | VAR IDENT Type                { create_symbol($2, TYPE, scope_level);}
 ;
 
 ExpressionStmt
@@ -129,7 +127,7 @@ IncDecStmt
                        if(strcmp($1, "int32")==0 || strcmp($1, "li_int32")==0) {
                            if((forpostnum-1)==scope_level && forpostnum>0) {
                                strcat(forpost, "ldc 1\n");
-                               strcat(forpost, "iadd\n\n");
+                               strcat(forpost, "iadd\n");
                            }
                            else {
                                fprintf(jasmin_file, "ldc 1\n");
@@ -139,11 +137,11 @@ IncDecStmt
                        else {
                            if((forpostnum-1)==scope_level && forpostnum>0) {
                                strcat(forpost, "ldc 1.0\n");
-                               strcat(forpost, "fadd\n\n");
+                               strcat(forpost, "fadd\n");
                            }
                            else {
                                fprintf(jasmin_file, "ldc 1.0\n");
-                               fprintf(jasmin_file, "fadd\n"); 
+                               fprintf(jasmin_file, "fadd\n");
                            }
                        }
                        if(forpostnum == 1) {
@@ -153,15 +151,14 @@ IncDecStmt
                            strcat(forpost2, forpost);
                        }
                        isAssign = 1;
-                       printf("&&&&&&&& %d %d\n", forpostnum, scope_level);
                        lookup_symbol(id, ""); 
-                       isAssign = 0;}
+                       isAssign = 0; }
     | Expression DEC { printf("DEC\n");
                        char forpost[1024] = {'\0'};
                        if(strcmp($1, "int32")==0 || strcmp($1, "li_int32")==0) {
                            if((forpostnum-1)==scope_level && forpostnum>0) {
                                strcat(forpost, "ldc 1\n");
-                               strcat(forpost, "isub\n\n");
+                               strcat(forpost, "isub\n");
                            }
                            else {
                                fprintf(jasmin_file, "ldc 1\n");
@@ -171,11 +168,11 @@ IncDecStmt
                        else {
                            if((forpostnum-1)==scope_level && forpostnum>0) {
                                strcat(forpost, "ldc 1.0\n");
-                               strcat(forpost, "fsub\n\n");
+                               strcat(forpost, "fsub\n");
                            }
                            else {
                                fprintf(jasmin_file, "ldc 1.0\n");
-                               fprintf(jasmin_file, "fsub\n"); 
+                               fprintf(jasmin_file, "fsub\n");
                            }
                        }
                        if(forpostnum == 1) {
@@ -197,16 +194,9 @@ Block
                            if(fornum > 0) {
                                if(forinit == 1) {
                                    fprintf(jasmin_file, "%s", forpost1);
-                                   printf("+++++%s\n", forpost1);
-                                   printf("++++++++++++++\n");
-                                   forpost1[0] = '\0';
                                }
                                else if(forinit == 2) {
                                    fprintf(jasmin_file, "%s", forpost2);
-
-                                   printf("-----%s\n", forpost2);
-                                   printf("--------------\n");
-                                   forpost2[0] = '\0';
                                }
                                char temp[20];
                                if(forinit > 0)
@@ -216,11 +206,8 @@ Block
                                fprintf(jasmin_file, "goto %s\n", temp);
                            }
                            if(ifnum > 0) {
-                               char temp[20];
-                               sprintf(temp, "L_if_exit%d", ifnum);
-                               fprintf(jasmin_file, "goto %s\n", temp); 
-                               sprintf(temp, "L_if_false%d", ifnum);
-                               fprintf(jasmin_file, "%s:\n", temp);}}
+                               fprintf(jasmin_file, "goto L_if_exit%d\n", ifnum);
+                               fprintf(jasmin_file, "L_if_false%d:\n", ifnum);}}
 ;
 
 Block_list
@@ -233,17 +220,11 @@ Block_item
 ;
 
 IfStmt
-    : IFsym Condition Block ELSE IfStmt { char temp[20];
-                                          sprintf(temp, "L_if_exit%d", ifnum);
-                                          fprintf(jasmin_file, "%s:\n", temp); 
+    : IFsym Condition Block ELSE IfStmt { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum); 
                                           ifnum--; }
-    | IFsym Condition Block ELSE Block  { char temp[20];
-                                          sprintf(temp, "L_if_exit%d", ifnum);
-                                          fprintf(jasmin_file, "%s:\n", temp); 
+    | IFsym Condition Block ELSE Block  { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum); 
                                           ifnum--; }
-    | IFsym Condition Block             { char temp[20];
-                                          sprintf(temp, "L_if_exit%d", ifnum);
-                                          fprintf(jasmin_file, "%s:\n", temp); 
+    | IFsym Condition Block             { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum);
                                           ifnum--; }  
 ;
 
@@ -257,38 +238,26 @@ Condition
                        HAS_ERROR = 1;
                    }
                    if(fornum > 0) {
-                       char temp[20];
-                       sprintf(temp, "L_for_exit%d", fornum);
-                       fprintf(jasmin_file, "ifeq %s\n", temp);
+                       fprintf(jasmin_file, "ifeq L_for_exit%d\n", fornum);
                    }
                    if(ifnum > 0) {
-                       char temp[20];
-                       sprintf(temp, "L_if_false%d", ifnum);
-                       fprintf(jasmin_file, "ifeq %s\n", temp);}
+                       fprintf(jasmin_file, "ifeq L_if_false%d\n", ifnum);}
                  }
 ;
 
 ForStmt
-    : FORsym Condition Block { char temp[20];
-                               sprintf(temp, "L_for_exit%d", fornum);
-                               fprintf(jasmin_file, "%s:\n", temp); fornum--; }
-    | FORsym ForClause Block { char temp[20];
-                               sprintf(temp, "L_for_exit%d", fornum);
-                               fprintf(jasmin_file, "%s:\n", temp); fornum--; forinit--; if(forinit==0) forpostnum = 0;}
+    : FORsym Condition Block { fprintf(jasmin_file, "L_for_exit%d:\n", fornum); fornum--; }
+    | FORsym ForClause Block { fprintf(jasmin_file, "L_for_exit%d:\n", fornum); fornum--; forinit--; if(forinit==0) forpostnum = 0;}
 ;
 
 FORsym
-    : FOR { fornum++; 
-            char temp[20];
-            sprintf(temp, "L_for_begin%d", fornum);
-            fprintf(jasmin_file, "%s:\n", temp); }
+    : FOR { fornum++;
+            fprintf(jasmin_file, "L_for_begin%d:\n", fornum); }
 ;
 
 ForClause
-    : InitStmt { forinit++; 
-                 char temp[20];
-                 sprintf(temp, "L_for_begin_init%d", forinit);
-                 fprintf(jasmin_file, "%s:\n", temp); } ';' Condition { forpostnum++;} ';' PostStmt 
+    : InitStmt { forinit++;
+                 fprintf(jasmin_file, "L_for_begin_init%d:\n", forinit); } ';' Condition { forpostnum++;} ';' PostStmt 
 ;
 
 InitStmt
@@ -306,8 +275,7 @@ SimpleStmt
 
 PrintStmt
     : PRINT '(' Expression ')'   { printf("PRINT %s\n", PrintType);
-                                   if(strcmp($3, "li_int32")==0) 
-                                       $3 = "int32";
+                                   $3 = li_int32_Change_int32($3);
                                    fprintf(jasmin_file, "getstatic java/lang/System/out Ljava/io/PrintStream;\n");
                                    fprintf(jasmin_file, "swap\n");
                                    if(strcmp(PrintType, "int32")==0)
@@ -319,8 +287,7 @@ PrintStmt
                                    else if(strcmp(PrintType, "bool")==0)
                                        fprintf(jasmin_file, "invokevirtual java/io/PrintStream/print(Z)V\n");}
     | PRINTLN '(' Expression ')' { printf("PRINTLN %s\n", PrintType);
-                                   if(strcmp($3, "li_int32")==0) 
-                                       $3 = "int32";
+                                   $3 = li_int32_Change_int32($3);
                                    fprintf(jasmin_file, "getstatic java/lang/System/out Ljava/io/PrintStream;\n");
                                    fprintf(jasmin_file, "swap\n");
                                    if(strcmp(PrintType, "int32")==0)
@@ -338,8 +305,7 @@ UnaryExpr
     | '+' UnaryExpr { $$ = $2; 
                       printf("POS\n");}
     | '-' UnaryExpr { $$ = $2; printf("NEG\n"); 
-                      if(strcmp($2, "li_int32")==0)
-                          $2 = "int32";
+                      $2 = li_int32_Change_int32($2);
                       if(strcmp($2, "int32")==0)
                           fprintf(jasmin_file, "ineg\n");
                       else
@@ -352,9 +318,9 @@ UnaryExpr
 
 PrimaryExpr
     : Operand            { $$ = $1; }
-    | IndexExpr          { $$ = ""; }
+    | IndexExpr          { $$ = $1; }
     | ConversionExpr     { $$ = $1; }
-    | '(' Expression ')' { $$ = ""; }
+    | '(' Expression ')' { $$ = $2; }
 ;
 
 Operand
@@ -368,12 +334,10 @@ Literal
     : INT_LIT            { $$ = "li_int32"; 
                            printf("INT_LIT %d\n", $1); 
                            PrintType = "int32"; 
-                           literal_type = "I"; 
                            fprintf(jasmin_file, "ldc %d\n", $1);}
     | FLOAT_LIT          { $$ = "float32"; 
                            printf("FLOAT_LIT %f\n", $1);
-                           PrintType = "float32"; 
-                           literal_type = "F";
+                           PrintType = "float32";
                            fprintf(jasmin_file, "ldc %f\n", $1);}
     | '"' STRING_LIT '"' { $$ = "string"; 
                            printf("STRING_LIT %s\n", $2); 
@@ -401,30 +365,18 @@ MultiplicationExpr
                       lookup_symbol(id, "");
                   }}
     | MultiplicationExpr '*' UnaryExpr  { $$ = $1; 
-                                          if(strcmp($1, "li_int32")==0) 
-                                              $1 = "int32"; 
-                                          if(strcmp($3, "li_int32")==0) 
-                                              $3 = "int32"; 
+                                          $1 = li_int32_Change_int32($1); 
+                                          $3 = li_int32_Change_int32($3);
                                           printf("%s\n", "MUL"); 
-                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                              fprintf(jasmin_file, "fmul\n");
-                                          else
-                                              fprintf(jasmin_file, "imul\n");}
+                                          fprintf(jasmin_file, "%smul\n", isForI($1, $3));}
     | MultiplicationExpr '/' UnaryExpr  { $$ = $1;  
-                                          if(strcmp($1, "li_int32")==0) 
-                                              $1 = "int32"; 
-                                          if(strcmp($3, "li_int32")==0) 
-                                              $3 = "int32"; 
+                                          $1 = li_int32_Change_int32($1); 
+                                          $3 = li_int32_Change_int32($3);
                                           printf("%s\n", "QUO");
-                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                              fprintf(jasmin_file, "fdiv\n");
-                                          else
-                                              fprintf(jasmin_file, "idiv\n");}
+                                          fprintf(jasmin_file, "%sdiv\n", isForI($1, $3));}
     | MultiplicationExpr '%' UnaryExpr  { $$ = $1; 
-                                          if(strcmp($1, "li_int32")==0) 
-                                              $1 = "int32"; 
-                                          if(strcmp($3, "li_int32")==0) 
-                                              $3 = "int32";  
+                                          $1 = li_int32_Change_int32($1); 
+                                          $3 = li_int32_Change_int32($3);  
                                           if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0) {
                                               printf("error:%d: invalid operation: (operator REM not defined on float32)\n", yylineno); 
                                               HAS_ERROR = 1;
@@ -436,75 +388,52 @@ MultiplicationExpr
 AdditionExpr
     : MultiplicationExpr { $$ = $1; }
     | AdditionExpr '+' MultiplicationExpr  { $$ = $1; 
-    printf("++%s\n", $1);
-                                             if(strcmp($1, "li_int32")==0) 
-                                                 $1 = "int32"; 
-                                             if(strcmp($3, "li_int32")==0) 
-                                                 $3 = "int32"; 
+                                             $1 = li_int32_Change_int32($1); 
+                                             $3 = li_int32_Change_int32($3); 
                                              if(strcmp($1, $3)!=0 && strcmp($1, "")!=0 && strcmp($3, "")!=0) {
                                                  printf("error:%d: invalid operation: ADD (mismatched types %s and %s)\n", yylineno, $1, $3); 
                                                  HAS_ERROR = 1;
                                              }
-                                             if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                                 fprintf(jasmin_file, "fadd\n");
-                                             else
-                                                 fprintf(jasmin_file, "iadd\n");
+                                             fprintf(jasmin_file, "%sadd\n", isForI($1, $3));
                                              printf("%s\n", "ADD"); }
     | AdditionExpr '-' MultiplicationExpr  { $$ = $1; 
-                                             if(strcmp($1, "li_int32")==0) 
-                                                 $1 = "int32"; 
-                                             if(strcmp($3, "li_int32")==0) 
-                                                 $3 = "int32";
+                                             $1 = li_int32_Change_int32($1); 
+                                             $3 = li_int32_Change_int32($3); 
                                              if(strcmp($1, $3)!=0 && strcmp($1, "")!=0 && strcmp($3, "")!=0) {
                                                  printf("error:%d: invalid operation: SUB (mismatched types %s and %s)\n", yylineno, $1, $3); 
                                                  HAS_ERROR = 1;
                                              }
-                                             if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                                 fprintf(jasmin_file, "fsub\n");
-                                             else
-                                                 fprintf(jasmin_file, "isub\n");
+                                             fprintf(jasmin_file, "%ssub\n", isForI($1, $3));
                                              printf("%s\n", "SUB"); }
 ;
 
 ComparisonExpr
     : AdditionExpr { $$ = $1; }
-    | ComparisonExpr EQL ComparisonExpr { $$ = "bool"; printf("%s\n", "EQL"); 
-                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                              jasmin_label("float32", "==");
-                                          else
-                                              jasmin_label("int32", "==");}
-    | ComparisonExpr NEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "NEQ"); }
+    | ComparisonExpr EQL ComparisonExpr { $$ = "bool"; printf("%s\n", "EQL");
+                                          jasmin_label($1, $3, "==");}
+    | ComparisonExpr NEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "NEQ"); 
+                                          jasmin_label($1, $3, "!=");}
     | ComparisonExpr '<' ComparisonExpr { $$ = "bool"; printf("%s\n", "LSS"); 
-                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                              jasmin_label("float32", "<");
-                                          else
-                                              jasmin_label("int32", "<");}
+                                          jasmin_label($1, $3, "<");}
     | ComparisonExpr LEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "LEQ"); 
-                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                              jasmin_label("float32", "<=");
-                                          else
-                                              jasmin_label("int32", "<=");}
+                                          jasmin_label($1, $3, "<=");}
     | ComparisonExpr '>' ComparisonExpr { $$ = "bool"; printf("%s\n", "GTR");  
-                                          if(strcmp($1, "float32")==0 || strcmp($3, "float32")==0)
-                                              jasmin_label("float32", ">");
-                                          else
-                                              jasmin_label("int32", ">");}
-    | ComparisonExpr GEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "GEQ"); }
+                                          jasmin_label($1, $3, ">");}
+    | ComparisonExpr GEQ ComparisonExpr { $$ = "bool"; printf("%s\n", "GEQ"); 
+                                          jasmin_label($1, $3, ">=");}
 ;
 
 LogicalAndExpr
     : ComparisonExpr { $$ = $1; }
     | LogicalAndExpr LAND ComparisonExpr { $$ = $1; 
-                                           if(strcmp($1, "li_int32")==0) 
-                                               $1 = "int32"; 
-                                           if(strcmp($3, "li_int32")==0) 
-                                               $3 = "int32"; 
-                                           if(strcmp($1, "int32")==0 || strcmp($3, "int32")==0) {
-                                               printf("error:%d: invalid operation: (operator LAND not defined on int32)\n", yylineno); 
+                                           $1 = li_int32_Change_int32($1);  
+                                           $3 = li_int32_Change_int32($3);  
+                                           if(strcmp($1, "int32")==0 || strcmp($3, "int32")==0) { 
+                                               printf("error:%d: invalid operation: (operator LOR not defined on int32)\n", yylineno); 
                                                HAS_ERROR = 1;
                                            }
-                                           fprintf(jasmin_file, "iand\n");
-                                           printf("%s\n", "LAND"); }
+                                           fprintf(jasmin_file, "ior\n");
+                                           printf("%s\n", "LOR");  }
 ;
 
 LogicalOrExpr
@@ -533,7 +462,7 @@ Assign_op
 
 Expression
     : LogicalOrExpr { $$ = $1; }
-    | IDENT Assign_op Expression     { printf("%s\n", assign_operation);
+    | IDENT Assign_op Expression     { printf("%s\n", assign_operation); // fix will error
                                        if(strcmp($3, "li_int32")==0)
                                            $3 = "int32";
                                        if(strcmp(assign_operation, "ADD_ASSIGN") == 0) {
@@ -576,16 +505,14 @@ Expression
                                        }
                                        isAssign = 1; 
                                        lookup_symbol($1, "");
-                                       isAssign = 0;}
+                                       isAssign = 0; }
     | UnaryExpr Assign_op Expression { $$ = $1; 
                                        if(strcmp($1, "li_int32")==0) {
                                            printf("error:%d: cannot assign to int32\n", yylineno); 
                                            HAS_ERROR = 1;
+                                           $1 = "int32";
                                        }
-                                       if(strcmp($1, "li_int32")==0) 
-                                           $1 = "int32"; 
-                                       if(strcmp($3, "li_int32")==0) 
-                                           $3 = "int32"; 
+                                       $3 = li_int32_Change_int32($3);  
                                        if(strcmp($1, $3)!=0 && strcmp($1, "")!=0 && strcmp($3, "")!=0) {
                                            printf("error:%d: invalid operation: %s (mismatched types %s and %s)\n", yylineno, assign_operation, $1, $3); 
                                            HAS_ERROR = 1;
@@ -643,7 +570,6 @@ int main(int argc, char *argv[])
     printf("Total lines: %d\n", yylineno);
     fclose(jasmin_file);
     fclose(yyin);
-
     
     return 0;
 }
@@ -699,7 +625,7 @@ static void create_symbol(char* name, char* type, int level) {
         else if(strcmp("float32", table[level].element_type[num]) == 0)
             fprintf(jasmin_file, "newarray float\n");
         fprintf(jasmin_file, "astore %d\n", table[level].address[num]);
-    }
+    } // fix will error
 
     isAssign = 0;
 }
@@ -709,76 +635,36 @@ static void insert_symbol(char* name, int level) {
 }
 
 static void lookup_symbol(char* name, char* type) {
-    int i,j;
-    int num;
-
-    for(i=scope_level; i>=0; i--) {
-        num = table[i].index_length;
-        for(j=0; j<num; j++) {
+    for(int i=scope_level; i>=0; i--) {
+        int num = table[i].index_length;
+        for(int j=0; j<num; j++) {
             if(strcmp(name, table[i].name[j])==0 && (strcmp(type, table[i].type[j])==0 || strcmp(type, "")==0)) {
                 printf("IDENT (name=%s, address=%d)\n", name, table[i].address[j]);
                 if((forpostnum-1)==scope_level && forpostnum>0) {
-                    char forpost[1024] = {'\0'};
+                    char temp[256] = {'\0'};
                     if(isAssign==0 && isArray==0) {
-                        if(strcmp("int32", table[i].type[j]) == 0) {
-                            char temp[256];
-                            sprintf(temp, "iload %d\n", table[i].address[j]);
-                            strcat(forpost, temp);
-                        }
-                        else if(strcmp("float32", table[i].type[j]) == 0) {
-                            char temp[256];
-                            sprintf(temp, "fload %d\n", table[i].address[j]);
-                            strcat(forpost, temp);
-                        }
-                        else if(strcmp("bool", table[i].type[j]) == 0) {
-                            char temp[256];
-                            sprintf(temp, "iload %d\n", table[i].address[j]);
-                            strcat(forpost, temp);
-                        }
-                        else if(strcmp("array", table[i].type[j]) == 0) {
-                            char temp[256];
+                        if(strcmp("array", table[i].type[j]) == 0) {
                             sprintf(temp, "aload %d\n", table[i].address[j]);
-                            strcat(forpost, temp);
+                        }
+                        else {
+                            sprintf(temp, "%sload %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
                         }
                     }
                     else if(isAssign==0 && isArray==2) {
-                        if(strcmp("array", table[i].type[j]) == 0) {
-                            if(strcmp("int32", table[i].element_type[j]) == 0)
-                                strcat(forpost, "iaload\n");
-                            else if(strcmp("float32", table[i].element_type[j]) == 0)
-                                strcat(forpost, "faload\n");
-                        }
+                        sprintf(temp, "%saload\n", isForI(table[i].element_type[j], ""));
                     }
                     else if(isArray == 0) {
-                        if(strcmp("int32", table[i].type[j]) == 0) {
-                            char temp[256];
-                            sprintf(temp, "istore %d\n", table[i].address[j]);
-                            strcat(forpost, temp);
+                        if(strcmp("array", table[i].type[j]) == 0) {
+                            sprintf(temp, "%sastore\n", isForI(table[i].element_type[j], ""));
                         }
-                        else if(strcmp("float32", table[i].type[j]) == 0) {
-                            char temp[256];
-                            sprintf(temp, "fstore %d\n", table[i].address[j]);
-                            strcat(forpost, temp);
-                        }
-                        else if(strcmp("bool", table[i].type[j]) == 0) {
-                            char temp[256];
-                            sprintf(temp, "istore %d\n", table[i].address[j]);
-                            strcat(forpost, temp);
-                        }
-                        else if(strcmp("array", table[i].type[j]) == 0) {
-                            if(strcmp("int32", table[i].element_type[j]) == 0)
-                                strcat(forpost, "iastore\n");
-                            else if(strcmp("float32", table[i].element_type[j]) == 0)
-                                strcat(forpost, "fastore\n");
+                        else {
+                            sprintf(temp, "%sstore %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
                         }
                     }
                     if(forinit == 1)
-                        strcat(forpost1, forpost);
+                        strcat(forpost1, temp);
                     else
-                        strcat(forpost2, forpost);
-
-                    printf("++++++%s", forpost);
-                    forpost[0] = '\0';
+                        strcat(forpost2, temp);
                 }
                 else {
                     if(isAssign==0 && isArray==0) {
@@ -812,11 +698,10 @@ static void lookup_symbol(char* name, char* type) {
                             else if(strcmp("float32", table[i].element_type[j]) == 0)
                                 fprintf(jasmin_file, "fastore\n");
                         }
-                    }
+                    } //fix will error
                 }
                 if(isArray != 1)
                     isArray = 0;
-                //isAssign = 0;
                 PrintType = strdup(table[i].type[j]);
                 if(strcmp(PrintType, "array")==0)
                     PrintType = strdup(table[i].element_type[j]);
@@ -829,12 +714,9 @@ static void lookup_symbol(char* name, char* type) {
 }
 
 static char* type_symbol(char* name, char* type) {
-    int i,j;
-    int num;
-
-    for(i=scope_level; i>=0; i--) {
-        num = table[i].index_length;
-        for(j=0; j<num; j++) {
+    for(int i=scope_level; i>=0; i--) {
+        int num = table[i].index_length;
+        for(int j=0; j<num; j++) {
             if(strcmp(name, table[i].name[j])==0 && (strcmp(type, table[i].type[j])==0 || strcmp(type, "")==0)) {
                 PrintType = strdup(table[i].type[j]);
                 if(strcmp(PrintType, "array")==0)
@@ -847,25 +729,16 @@ static char* type_symbol(char* name, char* type) {
 }
 
 static void cast_symbol() {
-    if(strcmp(literal_type, "")==0) {
-        if(strcmp(PrintType, "float32")==0) PrintType = "F";
-        else if(strcmp(PrintType, "int32")==0) PrintType = "I";
-    }
-    else
-        PrintType = strdup(literal_type);
-
-    if(strcmp(TYPE, "float32")==0) {
-        printf("%s to F\n", PrintType);
-        fprintf(jasmin_file, "i2f\n");
-        PrintType = "float32";
-    }
-    else if(strcmp(TYPE, "int32")==0) {
-        printf("%s to I\n", PrintType);
+    if(strcmp(PrintType, "float32")==0 && strcmp(TYPE, "int32")==0) {
+        printf("F to I\n");
         fprintf(jasmin_file, "f2i\n");
         PrintType = "int32";
     }
-
-    literal_type = "";
+    else if(strcmp(PrintType, "int32")==0 && strcmp(TYPE, "float32")==0) {
+        printf("I to F\n");
+        fprintf(jasmin_file, "i2f\n");
+        PrintType = "float32";
+    }
 }
 
 static void dump_symbol(int level) {
@@ -879,19 +752,33 @@ static void dump_symbol(int level) {
     table[level].index_length = 0;
 }
 
-static void jasmin_label(char* type, char* op) {
-    char label_name[10], next_label_name[10];
-    sprintf(label_name, "L_cmp_%d", label);
-    label++;
-    sprintf(next_label_name, "L_cmp_%d", label);
-    label++;
-
-    if(strcmp(type, "int32") == 0) {
-        fprintf(jasmin_file, "isub\n");
+static char* isForI(char* type1, char* type2) {
+    if(strcmp(type1, "float32")==0 || strcmp(type2, "float32")==0) {
+        return "f";
     }
-    else if(strcmp(type, "float32") == 0) {
+    else {
+        return "i";
+    }
+}
+
+static char* li_int32_Change_int32(char* type) {
+    if(strcmp(type, "li_int32")==0) 
+        return "int32";
+    else
+        return type;
+}
+
+static void jasmin_label(char* type1, char* type2, char* op) {
+    char label_name[10], next_label_name[10];
+    sprintf(label_name, "L_cmp_%d", label++);
+    sprintf(next_label_name, "L_cmp_%d", label++);
+
+    if(strcmp(type1, "float32")==0 || strcmp(type2, "float32")==0) {
         fprintf(jasmin_file, "fsub\n");
         fprintf(jasmin_file, "f2i\n");
+    }
+    else {
+        fprintf(jasmin_file, "isub\n");
     }
 
     if(strcmp(op, "<") == 0)
@@ -900,8 +787,13 @@ static void jasmin_label(char* type, char* op) {
         fprintf(jasmin_file, "ifle %s\n", label_name);
     else if(strcmp(op, "==") == 0)
         fprintf(jasmin_file, "ifeq %s\n", label_name);
+    else if(strcmp(op, "!=") == 0)
+        fprintf(jasmin_file, "ifne %s\n", label_name);
+    else if(strcmp(op, ">=") == 0)
+        fprintf(jasmin_file, "ifge %s\n", label_name);
     else
         fprintf(jasmin_file, "ifgt %s\n", label_name);
+
     fprintf(jasmin_file, "iconst_0\n");
     fprintf(jasmin_file, "goto %s\n", next_label_name);
     fprintf(jasmin_file, "%s:\n", label_name);
