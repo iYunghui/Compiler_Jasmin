@@ -84,7 +84,15 @@
     int fornum = 0;
     int forinit = 0;
     int forpostnum = 0;
+    int forscope = 0;
+    int fortemp = 0;
+    int forglobal = 0;
+    int forinstr[100] = {0};
+    int forpostinstr[100] = {0};
     int ifnum = 0;
+    int iftemp = 0;
+    int ifglobal = 0;
+    int ifinstr[100] = {0};
     int scope_level = 0, next_level = 1;
     struct SymbolTable table[100];
     char *TYPE = "";
@@ -111,7 +119,7 @@
     /* Global variables */
     int HAS_ERROR = 0;
 
-#line 115 "y.tab.c" /* yacc.c:339  */
+#line 123 "y.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -213,7 +221,7 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 56 "compiler_hw3.y" /* yacc.c:355  */
+#line 64 "compiler_hw3.y" /* yacc.c:355  */
 
     int i_val;
     float f_val;
@@ -221,7 +229,7 @@ union YYSTYPE
     char *id_val;
     char *type_val;
 
-#line 225 "y.tab.c" /* yacc.c:355  */
+#line 233 "y.tab.c" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -238,7 +246,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 242 "y.tab.c" /* yacc.c:358  */
+#line 250 "y.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -538,15 +546,15 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,    96,    96,   100,   101,   105,   106,   107,   108,   109,
-     110,   111,   115,   117,   121,   125,   156,   190,   191,   214,
-     215,   219,   223,   225,   227,   232,   236,   249,   250,   254,
-     259,   260,   259,   264,   268,   272,   273,   277,   289,   304,
-     305,   307,   313,   320,   321,   322,   323,   327,   328,   334,
-     338,   342,   346,   354,   358,   362,   367,   372,   377,   389,
-     390,   399,   411,   412,   414,   416,   418,   420,   422,   427,
-     428,   440,   441,   455,   456,   457,   458,   459,   460,   464,
-     465,   509,   528,   529,   530,   531,   532
+       0,   104,   104,   108,   109,   113,   114,   115,   116,   117,
+     118,   119,   123,   125,   129,   133,   164,   198,   199,   212,
+     213,   217,   221,   224,   227,   233,   243,   259,   267,   288,
+     301,   302,   301,   306,   310,   314,   315,   319,   331,   346,
+     347,   349,   355,   362,   363,   364,   365,   369,   370,   376,
+     380,   384,   388,   396,   400,   404,   409,   414,   419,   431,
+     432,   441,   453,   454,   456,   458,   460,   462,   464,   469,
+     470,   482,   483,   497,   498,   499,   500,   501,   502,   506,
+     507,   542,   561,   562,   563,   564,   565
 };
 #endif
 
@@ -1438,24 +1446,24 @@ yyreduce:
   switch (yyn)
     {
         case 12:
-#line 115 "compiler_hw3.y" /* yacc.c:1646  */
+#line 123 "compiler_hw3.y" /* yacc.c:1646  */
     { isAssign = 1;
                                       create_symbol((yyvsp[-3].id_val), TYPE, scope_level);}
-#line 1445 "y.tab.c" /* yacc.c:1646  */
+#line 1453 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 117 "compiler_hw3.y" /* yacc.c:1646  */
+#line 125 "compiler_hw3.y" /* yacc.c:1646  */
     { create_symbol((yyvsp[-1].id_val), TYPE, scope_level);}
-#line 1451 "y.tab.c" /* yacc.c:1646  */
+#line 1459 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 125 "compiler_hw3.y" /* yacc.c:1646  */
+#line 133 "compiler_hw3.y" /* yacc.c:1646  */
     { printf("INC\n");
                        char forpost[1024] = {'\0'};
                        if(strcmp((yyvsp[-1].s_val), "int32")==0 || strcmp((yyvsp[-1].s_val), "li_int32")==0) {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1\n");
                                strcat(forpost, "iadd\n");
                            }
@@ -1465,7 +1473,7 @@ yyreduce:
                            }
                        }
                        else {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1.0\n");
                                strcat(forpost, "fadd\n");
                            }
@@ -1483,15 +1491,15 @@ yyreduce:
                        isAssign = 1;
                        lookup_symbol(id, ""); 
                        isAssign = 0; }
-#line 1487 "y.tab.c" /* yacc.c:1646  */
+#line 1495 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 156 "compiler_hw3.y" /* yacc.c:1646  */
+#line 164 "compiler_hw3.y" /* yacc.c:1646  */
     { printf("DEC\n");
                        char forpost[1024] = {'\0'};
                        if(strcmp((yyvsp[-1].s_val), "int32")==0 || strcmp((yyvsp[-1].s_val), "li_int32")==0) {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1\n");
                                strcat(forpost, "isub\n");
                            }
@@ -1501,7 +1509,7 @@ yyreduce:
                            }
                        }
                        else {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1.0\n");
                                strcat(forpost, "fsub\n");
                            }
@@ -1519,50 +1527,42 @@ yyreduce:
                        isAssign = 1;
                        lookup_symbol(id, ""); 
                        isAssign = 0;}
-#line 1523 "y.tab.c" /* yacc.c:1646  */
+#line 1531 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 191 "compiler_hw3.y" /* yacc.c:1646  */
+#line 199 "compiler_hw3.y" /* yacc.c:1646  */
     { dump_symbol(scope_level); 
                            scope_level--; 
                            next_level--; 
-                           if(fornum > 0) {
-                               if(forinit == 1) {
-                                   fprintf(jasmin_file, "%s", forpost1);
-                               }
-                               else if(forinit == 2) {
-                                   fprintf(jasmin_file, "%s", forpost2);
-                               }
-                               char temp[20];
-                               if(forinit > 0)
-                                   sprintf(temp, "L_for_begin_init%d", forinit);
-                               else
-                                   sprintf(temp, "L_for_begin%d", fornum);
-                               fprintf(jasmin_file, "goto %s\n", temp);
-                           }
-                           if(ifnum > 0) {
+                           printf("******************%d\n", scope_level);
+                           if(ifnum>iftemp && ifinstr[ifnum]==3) {
                                fprintf(jasmin_file, "goto L_if_exit%d\n", ifnum);
-                               fprintf(jasmin_file, "L_if_false%d:\n", ifnum);}}
-#line 1548 "y.tab.c" /* yacc.c:1646  */
+                               fprintf(jasmin_file, "L_if_false%d:\n", ifnum);
+                               ifinstr[ifnum] -= 2;
+                           }
+                        }
+#line 1546 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 214 "compiler_hw3.y" /* yacc.c:1646  */
+#line 212 "compiler_hw3.y" /* yacc.c:1646  */
     { scope_level = next_level; next_level++; }
-#line 1554 "y.tab.c" /* yacc.c:1646  */
+#line 1552 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 223 "compiler_hw3.y" /* yacc.c:1646  */
-    { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum); 
+#line 221 "compiler_hw3.y" /* yacc.c:1646  */
+    { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum);
+                                          ifinstr[ifnum] = 0;
                                           ifnum--; }
-#line 1561 "y.tab.c" /* yacc.c:1646  */
+#line 1560 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 225 "compiler_hw3.y" /* yacc.c:1646  */
+#line 224 "compiler_hw3.y" /* yacc.c:1646  */
     { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum); 
+                                          ifinstr[ifnum] = 0;
                                           ifnum--; }
 #line 1568 "y.tab.c" /* yacc.c:1646  */
     break;
@@ -1570,65 +1570,113 @@ yyreduce:
   case 24:
 #line 227 "compiler_hw3.y" /* yacc.c:1646  */
     { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum);
+                                          ifinstr[ifnum] = 0;
                                           ifnum--; }
-#line 1575 "y.tab.c" /* yacc.c:1646  */
+#line 1576 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 232 "compiler_hw3.y" /* yacc.c:1646  */
-    { ifnum++; }
-#line 1581 "y.tab.c" /* yacc.c:1646  */
+#line 233 "compiler_hw3.y" /* yacc.c:1646  */
+    { if(ifnum == 0) {
+               ifnum = ifglobal;
+               iftemp = ifglobal;
+           }
+           ifnum++;
+           ifglobal++;
+           ifinstr[ifnum] = 4; }
+#line 1588 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 236 "compiler_hw3.y" /* yacc.c:1646  */
+#line 243 "compiler_hw3.y" /* yacc.c:1646  */
     { if(strcmp((yyvsp[0].s_val), "bool")!=0) {
                        printf("error:%d: non-bool (type %s) used as for condition\n", yylineno+1, (yyvsp[0].s_val)); 
                        HAS_ERROR = 1;
                    }
-                   if(fornum > 0) {
+                   if(fornum>fortemp && forinstr[fornum]==3) {
                        fprintf(jasmin_file, "ifeq L_for_exit%d\n", fornum);
+                       forinstr[fornum]--;
                    }
-                   if(ifnum > 0) {
-                       fprintf(jasmin_file, "ifeq L_if_false%d\n", ifnum);}
+                   if(ifnum>iftemp && ifinstr[ifnum]==4) {
+                       fprintf(jasmin_file, "ifeq L_if_false%d\n", ifnum);
+                       ifinstr[ifnum]--;
+                   }
                  }
-#line 1596 "y.tab.c" /* yacc.c:1646  */
+#line 1606 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 249 "compiler_hw3.y" /* yacc.c:1646  */
-    { fprintf(jasmin_file, "L_for_exit%d:\n", fornum); fornum--; }
-#line 1602 "y.tab.c" /* yacc.c:1646  */
+#line 259 "compiler_hw3.y" /* yacc.c:1646  */
+    { if(fornum>fortemp && forinstr[fornum]==2) {
+                               char temp[20];
+                               sprintf(temp, "L_for_begin%d", fornum);
+                               fprintf(jasmin_file, "goto %s\n", temp);
+                               forinstr[fornum]--;
+                               }
+                               fprintf(jasmin_file, "L_for_exit%d:\n", fornum); 
+                               forinstr[fornum] = 0; fornum--; }
+#line 1619 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 250 "compiler_hw3.y" /* yacc.c:1646  */
-    { fprintf(jasmin_file, "L_for_exit%d:\n", fornum); fornum--; forinit--; if(forinit==0) forpostnum = 0;}
-#line 1608 "y.tab.c" /* yacc.c:1646  */
+#line 267 "compiler_hw3.y" /* yacc.c:1646  */
+    { if(fornum>fortemp && forinstr[fornum]==2) {
+                                    if(forinit == 1) {
+                                        fprintf(jasmin_file, "%s", forpost1);
+                                    }
+                                    else if(forinit == 2) {
+                                        fprintf(jasmin_file, "%s", forpost2);
+                                    }
+                                    char temp[20];
+                                    if(forinit > 0)
+                                        sprintf(temp, "L_for_begin_init%d", fornum);
+                                    else
+                                        sprintf(temp, "L_for_begin%d", fornum);
+                                    fprintf(jasmin_file, "goto %s\n", temp);
+                                    forinstr[fornum]--;
+                               }
+                               fprintf(jasmin_file, "L_for_exit%d:\n", fornum); 
+                               printf("^^^^^^^^^^ %d\n", forpostnum);
+                               forinstr[fornum] = 0; fornum--; forinit--; if(forinit==0) forpostnum = 0; }
+#line 1642 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 254 "compiler_hw3.y" /* yacc.c:1646  */
-    { fornum++;
-            fprintf(jasmin_file, "L_for_begin%d:\n", fornum); }
-#line 1615 "y.tab.c" /* yacc.c:1646  */
+#line 288 "compiler_hw3.y" /* yacc.c:1646  */
+    { if(fornum == 0) {
+                fornum = forglobal;
+                fortemp = forglobal;
+            }
+            fornum++;
+            forglobal++;
+            forscope = scope_level;
+            forinstr[fornum] = 4;
+            fprintf(jasmin_file, "L_for_begin%d:\n", fornum); 
+            forinstr[fornum]--;}
+#line 1657 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 259 "compiler_hw3.y" /* yacc.c:1646  */
+#line 301 "compiler_hw3.y" /* yacc.c:1646  */
     { forinit++;
-                 fprintf(jasmin_file, "L_for_begin_init%d:\n", forinit); }
-#line 1622 "y.tab.c" /* yacc.c:1646  */
+                 fprintf(jasmin_file, "L_for_begin_init%d:\n", fornum); }
+#line 1664 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 260 "compiler_hw3.y" /* yacc.c:1646  */
-    { forpostnum++;}
-#line 1628 "y.tab.c" /* yacc.c:1646  */
+#line 302 "compiler_hw3.y" /* yacc.c:1646  */
+    { forpostnum++; forpostinstr[fornum] = 1;}
+#line 1670 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 32:
+#line 302 "compiler_hw3.y" /* yacc.c:1646  */
+    { forpostinstr[fornum] = 0;}
+#line 1676 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 277 "compiler_hw3.y" /* yacc.c:1646  */
+#line 319 "compiler_hw3.y" /* yacc.c:1646  */
     { printf("PRINT %s\n", PrintType);
                                    (yyvsp[-1].s_val) = li_int32_Change_int32((yyvsp[-1].s_val));
                                    fprintf(jasmin_file, "getstatic java/lang/System/out Ljava/io/PrintStream;\n");
@@ -1641,11 +1689,11 @@ yyreduce:
                                        fprintf(jasmin_file, "invokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n");
                                    else if(strcmp(PrintType, "bool")==0)
                                        fprintf(jasmin_file, "invokevirtual java/io/PrintStream/print(Z)V\n");}
-#line 1645 "y.tab.c" /* yacc.c:1646  */
+#line 1693 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 289 "compiler_hw3.y" /* yacc.c:1646  */
+#line 331 "compiler_hw3.y" /* yacc.c:1646  */
     { printf("PRINTLN %s\n", PrintType);
                                    (yyvsp[-1].s_val) = li_int32_Change_int32((yyvsp[-1].s_val));
                                    fprintf(jasmin_file, "getstatic java/lang/System/out Ljava/io/PrintStream;\n");
@@ -1658,161 +1706,161 @@ yyreduce:
                                        fprintf(jasmin_file, "invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
                                    else if(strcmp(PrintType, "bool")==0)
                                        fprintf(jasmin_file, "invokevirtual java/io/PrintStream/println(Z)V\n");}
-#line 1662 "y.tab.c" /* yacc.c:1646  */
+#line 1710 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 39:
-#line 304 "compiler_hw3.y" /* yacc.c:1646  */
+#line 346 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1668 "y.tab.c" /* yacc.c:1646  */
+#line 1716 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 305 "compiler_hw3.y" /* yacc.c:1646  */
+#line 347 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); 
                       printf("POS\n");}
-#line 1675 "y.tab.c" /* yacc.c:1646  */
+#line 1723 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 307 "compiler_hw3.y" /* yacc.c:1646  */
+#line 349 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); printf("NEG\n"); 
                       (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val));
                       if(strcmp((yyvsp[0].s_val), "int32")==0)
                           fprintf(jasmin_file, "ineg\n");
                       else
                           fprintf(jasmin_file, "fneg\n");}
-#line 1686 "y.tab.c" /* yacc.c:1646  */
+#line 1734 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 313 "compiler_hw3.y" /* yacc.c:1646  */
+#line 355 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); printf("NOT\n"); 
                       fprintf(jasmin_file, "iconst_1\n");
                       fprintf(jasmin_file, "ixor\n");
                       }
-#line 1695 "y.tab.c" /* yacc.c:1646  */
+#line 1743 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 320 "compiler_hw3.y" /* yacc.c:1646  */
+#line 362 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1701 "y.tab.c" /* yacc.c:1646  */
+#line 1749 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 321 "compiler_hw3.y" /* yacc.c:1646  */
+#line 363 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1707 "y.tab.c" /* yacc.c:1646  */
+#line 1755 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 322 "compiler_hw3.y" /* yacc.c:1646  */
+#line 364 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1713 "y.tab.c" /* yacc.c:1646  */
+#line 1761 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 323 "compiler_hw3.y" /* yacc.c:1646  */
+#line 365 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-1].s_val); }
-#line 1719 "y.tab.c" /* yacc.c:1646  */
+#line 1767 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 327 "compiler_hw3.y" /* yacc.c:1646  */
+#line 369 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1725 "y.tab.c" /* yacc.c:1646  */
+#line 1773 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 328 "compiler_hw3.y" /* yacc.c:1646  */
+#line 370 "compiler_hw3.y" /* yacc.c:1646  */
     { id = strdup(yylval.id_val); (yyval.s_val) = type_symbol(id, "");
                 if(strcmp(TYPE, "array") != 0)
                     lookup_symbol(yylval.id_val, ""); }
-#line 1733 "y.tab.c" /* yacc.c:1646  */
+#line 1781 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 334 "compiler_hw3.y" /* yacc.c:1646  */
+#line 376 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = "li_int32"; 
                            printf("INT_LIT %d\n", (yyvsp[0].i_val)); 
                            PrintType = "int32"; 
                            fprintf(jasmin_file, "ldc %d\n", (yyvsp[0].i_val));}
-#line 1742 "y.tab.c" /* yacc.c:1646  */
+#line 1790 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 338 "compiler_hw3.y" /* yacc.c:1646  */
+#line 380 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = "float32"; 
                            printf("FLOAT_LIT %f\n", (yyvsp[0].f_val));
                            PrintType = "float32";
                            fprintf(jasmin_file, "ldc %f\n", (yyvsp[0].f_val));}
-#line 1751 "y.tab.c" /* yacc.c:1646  */
+#line 1799 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 342 "compiler_hw3.y" /* yacc.c:1646  */
+#line 384 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = "string"; 
                            printf("STRING_LIT %s\n", (yyvsp[-1].s_val)); 
                            PrintType = "string"; 
                            fprintf(jasmin_file, "ldc \"%s\"\n", (yyvsp[-1].s_val));}
-#line 1760 "y.tab.c" /* yacc.c:1646  */
+#line 1808 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 346 "compiler_hw3.y" /* yacc.c:1646  */
+#line 388 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = "bool"; 
                            printf("%s\n", (yyvsp[0].s_val)); 
                            PrintType = "bool"; 
                            if(strcmp((yyvsp[0].s_val), "TRUE")==0) fprintf(jasmin_file, "iconst_1\n");
                            else if(strcmp((yyvsp[0].s_val), "FALSE")==0) fprintf(jasmin_file, "iconst_0\n");}
-#line 1770 "y.tab.c" /* yacc.c:1646  */
+#line 1818 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 354 "compiler_hw3.y" /* yacc.c:1646  */
+#line 396 "compiler_hw3.y" /* yacc.c:1646  */
     { PrintType = strdup(TYPE); isArray = 1; lookup_symbol(id, ""); }
-#line 1776 "y.tab.c" /* yacc.c:1646  */
+#line 1824 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 358 "compiler_hw3.y" /* yacc.c:1646  */
+#line 400 "compiler_hw3.y" /* yacc.c:1646  */
     { cast_symbol(); (yyval.s_val) = (yyvsp[-3].s_val); }
-#line 1782 "y.tab.c" /* yacc.c:1646  */
+#line 1830 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 362 "compiler_hw3.y" /* yacc.c:1646  */
+#line 404 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); 
                   if(isArray == 1) {
                       isArray = 2;
                       lookup_symbol(id, "");
                   }}
-#line 1792 "y.tab.c" /* yacc.c:1646  */
+#line 1840 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 367 "compiler_hw3.y" /* yacc.c:1646  */
+#line 409 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val); 
                                           (yyvsp[-2].s_val) = li_int32_Change_int32((yyvsp[-2].s_val)); 
                                           (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val));
                                           printf("%s\n", "MUL"); 
                                           fprintf(jasmin_file, "%smul\n", isForI((yyvsp[-2].s_val), (yyvsp[0].s_val)));}
-#line 1802 "y.tab.c" /* yacc.c:1646  */
+#line 1850 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 372 "compiler_hw3.y" /* yacc.c:1646  */
+#line 414 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val);  
                                           (yyvsp[-2].s_val) = li_int32_Change_int32((yyvsp[-2].s_val)); 
                                           (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val));
                                           printf("%s\n", "QUO");
                                           fprintf(jasmin_file, "%sdiv\n", isForI((yyvsp[-2].s_val), (yyvsp[0].s_val)));}
-#line 1812 "y.tab.c" /* yacc.c:1646  */
+#line 1860 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 377 "compiler_hw3.y" /* yacc.c:1646  */
+#line 419 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val); 
                                           (yyvsp[-2].s_val) = li_int32_Change_int32((yyvsp[-2].s_val)); 
                                           (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val));  
@@ -1822,17 +1870,17 @@ yyreduce:
                                           }
                                           fprintf(jasmin_file, "irem\n");
                                           printf("%s\n", "REM"); }
-#line 1826 "y.tab.c" /* yacc.c:1646  */
+#line 1874 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 389 "compiler_hw3.y" /* yacc.c:1646  */
+#line 431 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1832 "y.tab.c" /* yacc.c:1646  */
+#line 1880 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 390 "compiler_hw3.y" /* yacc.c:1646  */
+#line 432 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val); 
                                              (yyvsp[-2].s_val) = li_int32_Change_int32((yyvsp[-2].s_val)); 
                                              (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val)); 
@@ -1842,11 +1890,11 @@ yyreduce:
                                              }
                                              fprintf(jasmin_file, "%sadd\n", isForI((yyvsp[-2].s_val), (yyvsp[0].s_val)));
                                              printf("%s\n", "ADD"); }
-#line 1846 "y.tab.c" /* yacc.c:1646  */
+#line 1894 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 399 "compiler_hw3.y" /* yacc.c:1646  */
+#line 441 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val); 
                                              (yyvsp[-2].s_val) = li_int32_Change_int32((yyvsp[-2].s_val)); 
                                              (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val)); 
@@ -1856,65 +1904,65 @@ yyreduce:
                                              }
                                              fprintf(jasmin_file, "%ssub\n", isForI((yyvsp[-2].s_val), (yyvsp[0].s_val)));
                                              printf("%s\n", "SUB"); }
-#line 1860 "y.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 62:
-#line 411 "compiler_hw3.y" /* yacc.c:1646  */
-    { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1866 "y.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 63:
-#line 412 "compiler_hw3.y" /* yacc.c:1646  */
-    { (yyval.s_val) = "bool"; printf("%s\n", "EQL");
-                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "==");}
-#line 1873 "y.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 64:
-#line 414 "compiler_hw3.y" /* yacc.c:1646  */
-    { (yyval.s_val) = "bool"; printf("%s\n", "NEQ"); 
-                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "!=");}
-#line 1880 "y.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 65:
-#line 416 "compiler_hw3.y" /* yacc.c:1646  */
-    { (yyval.s_val) = "bool"; printf("%s\n", "LSS"); 
-                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "<");}
-#line 1887 "y.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 66:
-#line 418 "compiler_hw3.y" /* yacc.c:1646  */
-    { (yyval.s_val) = "bool"; printf("%s\n", "LEQ"); 
-                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "<=");}
-#line 1894 "y.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 67:
-#line 420 "compiler_hw3.y" /* yacc.c:1646  */
-    { (yyval.s_val) = "bool"; printf("%s\n", "GTR");  
-                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), ">");}
-#line 1901 "y.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 68:
-#line 422 "compiler_hw3.y" /* yacc.c:1646  */
-    { (yyval.s_val) = "bool"; printf("%s\n", "GEQ"); 
-                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), ">=");}
 #line 1908 "y.tab.c" /* yacc.c:1646  */
     break;
 
-  case 69:
-#line 427 "compiler_hw3.y" /* yacc.c:1646  */
+  case 62:
+#line 453 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
 #line 1914 "y.tab.c" /* yacc.c:1646  */
     break;
 
+  case 63:
+#line 454 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = "bool"; printf("%s\n", "EQL");
+                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "==");}
+#line 1921 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 64:
+#line 456 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = "bool"; printf("%s\n", "NEQ"); 
+                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "!=");}
+#line 1928 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 65:
+#line 458 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = "bool"; printf("%s\n", "LSS"); 
+                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "<");}
+#line 1935 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 66:
+#line 460 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = "bool"; printf("%s\n", "LEQ"); 
+                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), "<=");}
+#line 1942 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 67:
+#line 462 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = "bool"; printf("%s\n", "GTR");  
+                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), ">");}
+#line 1949 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 68:
+#line 464 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = "bool"; printf("%s\n", "GEQ"); 
+                                          jasmin_label((yyvsp[-2].s_val), (yyvsp[0].s_val), ">=");}
+#line 1956 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 69:
+#line 469 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = (yyvsp[0].s_val); }
+#line 1962 "y.tab.c" /* yacc.c:1646  */
+    break;
+
   case 70:
-#line 428 "compiler_hw3.y" /* yacc.c:1646  */
+#line 470 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val); 
                                            (yyvsp[-2].s_val) = li_int32_Change_int32((yyvsp[-2].s_val));  
                                            (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val));  
@@ -1924,17 +1972,17 @@ yyreduce:
                                            }
                                            fprintf(jasmin_file, "ior\n");
                                            printf("%s\n", "LOR");  }
-#line 1928 "y.tab.c" /* yacc.c:1646  */
+#line 1976 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 71:
-#line 440 "compiler_hw3.y" /* yacc.c:1646  */
+#line 482 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1934 "y.tab.c" /* yacc.c:1646  */
+#line 1982 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 72:
-#line 441 "compiler_hw3.y" /* yacc.c:1646  */
+#line 483 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val); 
                                          if(strcmp((yyvsp[-2].s_val), "li_int32")==0) 
                                              (yyvsp[-2].s_val) = "int32"; 
@@ -1946,102 +1994,93 @@ yyreduce:
                                          }
                                          fprintf(jasmin_file, "ior\n");
                                          printf("%s\n", "LOR"); }
-#line 1950 "y.tab.c" /* yacc.c:1646  */
+#line 1998 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 73:
-#line 455 "compiler_hw3.y" /* yacc.c:1646  */
+#line 497 "compiler_hw3.y" /* yacc.c:1646  */
     { assign_operation = "ASSIGN"; isArray = 0;}
-#line 1956 "y.tab.c" /* yacc.c:1646  */
+#line 2004 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 74:
-#line 456 "compiler_hw3.y" /* yacc.c:1646  */
+#line 498 "compiler_hw3.y" /* yacc.c:1646  */
     { assign_operation = "ADD_ASSIGN"; isArray = 0;}
-#line 1962 "y.tab.c" /* yacc.c:1646  */
+#line 2010 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 75:
-#line 457 "compiler_hw3.y" /* yacc.c:1646  */
+#line 499 "compiler_hw3.y" /* yacc.c:1646  */
     { assign_operation = "SUB_ASSIGN"; isArray = 0;}
-#line 1968 "y.tab.c" /* yacc.c:1646  */
+#line 2016 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 76:
-#line 458 "compiler_hw3.y" /* yacc.c:1646  */
+#line 500 "compiler_hw3.y" /* yacc.c:1646  */
     { assign_operation = "MUL_ASSIGN"; isArray = 0;}
-#line 1974 "y.tab.c" /* yacc.c:1646  */
+#line 2022 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 77:
-#line 459 "compiler_hw3.y" /* yacc.c:1646  */
+#line 501 "compiler_hw3.y" /* yacc.c:1646  */
     { assign_operation = "QUO_ASSIGN"; isArray = 0;}
-#line 1980 "y.tab.c" /* yacc.c:1646  */
+#line 2028 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 78:
-#line 460 "compiler_hw3.y" /* yacc.c:1646  */
+#line 502 "compiler_hw3.y" /* yacc.c:1646  */
     { assign_operation = "REM_ASSIGN"; isArray = 0;}
-#line 1986 "y.tab.c" /* yacc.c:1646  */
+#line 2034 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 79:
-#line 464 "compiler_hw3.y" /* yacc.c:1646  */
+#line 506 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].s_val); }
-#line 1992 "y.tab.c" /* yacc.c:1646  */
+#line 2040 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 80:
-#line 465 "compiler_hw3.y" /* yacc.c:1646  */
-    { printf("%s\n", assign_operation); // fix will error
-                                       if(strcmp((yyvsp[0].s_val), "li_int32")==0)
-                                           (yyvsp[0].s_val) = "int32";
-                                       if(strcmp(assign_operation, "ADD_ASSIGN") == 0) {
+#line 507 "compiler_hw3.y" /* yacc.c:1646  */
+    { (yyval.s_val) = (yyvsp[-2].id_val);
+                                       printf("%s\n", assign_operation);
+                                       (yyvsp[0].s_val) = li_int32_Change_int32((yyvsp[0].s_val));
+                                       
+                                       char temp;
+                                       if(strcmp((yyvsp[0].s_val), "float32") == 0)
+                                            temp = 'f';
+                                       else if(strcmp((yyvsp[0].s_val), "int32") == 0)
+                                            temp = 'i';
+                                       if(strcmp(assign_operation, "ASSIGN") == 0) {
+
+                                       }
+                                       else {
                                            lookup_symbol((yyvsp[-2].id_val), "");
                                            fprintf(jasmin_file, "swap\n");
-                                           if(strcmp((yyvsp[0].s_val), "float32") == 0)
-                                               fprintf(jasmin_file, "fadd\n");
-                                           else if(strcmp((yyvsp[0].s_val), "int32") == 0)
-                                               fprintf(jasmin_file, "iadd\n");
+                                           if(strcmp(assign_operation, "ADD_ASSIGN") == 0) {
+                                               fprintf(jasmin_file, "%cadd\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "SUB_ASSIGN") == 0) {
+                                               fprintf(jasmin_file, "%csub\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "MUL_ASSIGN") == 0) {
+                                               fprintf(jasmin_file, "%cmul\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "QUO_ASSIGN") == 0) {
+                                                fprintf(jasmin_file, "%cdiv\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "REM_ASSIGN") == 0) {
+                                                fprintf(jasmin_file, "%crem\n", temp);
+                                           }
                                        }
-                                       else if(strcmp(assign_operation, "SUB_ASSIGN") == 0) {
-                                           lookup_symbol((yyvsp[-2].id_val), "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp((yyvsp[0].s_val), "float32") == 0)
-                                               fprintf(jasmin_file, "fsub\n");
-                                           else if(strcmp((yyvsp[0].s_val), "int32") == 0)
-                                               fprintf(jasmin_file, "isub\n");
-                                       }
-                                       else if(strcmp(assign_operation, "MUL_ASSIGN") == 0) {
-                                           lookup_symbol((yyvsp[-2].id_val), "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp((yyvsp[0].s_val), "float32") == 0)
-                                               fprintf(jasmin_file, "fmul\n");
-                                           else if(strcmp((yyvsp[0].s_val), "int32") == 0)
-                                               fprintf(jasmin_file, "imul\n");
-                                       }
-                                       else if(strcmp(assign_operation, "QUO_ASSIGN") == 0) {
-                                           lookup_symbol((yyvsp[-2].id_val), "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp((yyvsp[0].s_val), "float32") == 0)
-                                               fprintf(jasmin_file, "fdiv\n");
-                                           else if(strcmp((yyvsp[0].s_val), "int32") == 0)
-                                               fprintf(jasmin_file, "idiv\n");
-                                       }
-                                       else if(strcmp(assign_operation, "REM_ASSIGN") == 0) {
-                                           lookup_symbol((yyvsp[-2].id_val), "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp((yyvsp[0].s_val), "int32") == 0)
-                                               fprintf(jasmin_file, "irem\n");
-                                       }
+                                       
                                        isAssign = 1; 
                                        lookup_symbol((yyvsp[-2].id_val), "");
                                        isAssign = 0; }
-#line 2041 "y.tab.c" /* yacc.c:1646  */
+#line 2080 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 81:
-#line 509 "compiler_hw3.y" /* yacc.c:1646  */
+#line 542 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[-2].s_val); 
                                        if(strcmp((yyvsp[-2].s_val), "li_int32")==0) {
                                            printf("error:%d: cannot assign to int32\n", yylineno); 
@@ -2058,41 +2097,41 @@ yyreduce:
                                        lookup_symbol(id, "");
                                        isAssign = 0;
                                        printf("%s\n", assign_operation); }
-#line 2062 "y.tab.c" /* yacc.c:1646  */
+#line 2101 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 82:
-#line 528 "compiler_hw3.y" /* yacc.c:1646  */
+#line 561 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].type_val); TYPE = strdup(yylval.type_val); }
-#line 2068 "y.tab.c" /* yacc.c:1646  */
+#line 2107 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 83:
-#line 529 "compiler_hw3.y" /* yacc.c:1646  */
+#line 562 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].type_val); TYPE = strdup(yylval.type_val); }
-#line 2074 "y.tab.c" /* yacc.c:1646  */
+#line 2113 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 84:
-#line 530 "compiler_hw3.y" /* yacc.c:1646  */
+#line 563 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].type_val); TYPE = strdup(yylval.type_val); }
-#line 2080 "y.tab.c" /* yacc.c:1646  */
+#line 2119 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 85:
-#line 531 "compiler_hw3.y" /* yacc.c:1646  */
+#line 564 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = (yyvsp[0].type_val); TYPE = strdup(yylval.type_val); }
-#line 2086 "y.tab.c" /* yacc.c:1646  */
+#line 2125 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 86:
-#line 532 "compiler_hw3.y" /* yacc.c:1646  */
+#line 565 "compiler_hw3.y" /* yacc.c:1646  */
     { (yyval.s_val) = "array"; ELEMENT = strdup(yylval.type_val);}
-#line 2092 "y.tab.c" /* yacc.c:1646  */
+#line 2131 "y.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 2096 "y.tab.c" /* yacc.c:1646  */
+#line 2135 "y.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2320,7 +2359,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 535 "compiler_hw3.y" /* yacc.c:1906  */
+#line 568 "compiler_hw3.y" /* yacc.c:1906  */
 
 
 /* C code section */
@@ -2402,19 +2441,18 @@ static void create_symbol(char* name, char* type, int level) {
         }        
     }
 
-    if(strcmp("int32", table[level].type[num]) == 0)
-        fprintf(jasmin_file, "istore %d\n", table[level].address[num]);
-    else if(strcmp("float32", table[level].type[num]) == 0)
-        fprintf(jasmin_file, "fstore %d\n", table[level].address[num]);
-    else if(strcmp("bool", table[level].type[num]) == 0)
-        fprintf(jasmin_file, "istore %d\n", table[level].address[num]);
+    if(strcmp("string", table[level].type[num]) == 0)
+        fprintf(jasmin_file, "astore %d\n", table[level].address[num]);
     else if(strcmp("array", table[level].type[num]) == 0) {
         if(strcmp("int32", table[level].element_type[num]) == 0)
             fprintf(jasmin_file, "newarray int\n");
         else if(strcmp("float32", table[level].element_type[num]) == 0)
             fprintf(jasmin_file, "newarray float\n");
         fprintf(jasmin_file, "astore %d\n", table[level].address[num]);
-    } // fix will error
+    }
+    else {
+        fprintf(jasmin_file, "%sstore %d\n", isForI(table[level].type[num], ""), table[level].address[num]);
+    }
 
     isAssign = 0;
 }
@@ -2429,7 +2467,7 @@ static void lookup_symbol(char* name, char* type) {
         for(int j=0; j<num; j++) {
             if(strcmp(name, table[i].name[j])==0 && (strcmp(type, table[i].type[j])==0 || strcmp(type, "")==0)) {
                 printf("IDENT (name=%s, address=%d)\n", name, table[i].address[j]);
-                if((forpostnum-1)==scope_level && forpostnum>0) {
+                if(scope_level==forscope && forpostnum>0 && forpostinstr[fornum]==1) {
                     char temp[256] = {'\0'};
                     if(isAssign==0 && isArray==0) {
                         if(strcmp("array", table[i].type[j]) == 0) {
@@ -2450,44 +2488,38 @@ static void lookup_symbol(char* name, char* type) {
                             sprintf(temp, "%sstore %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
                         }
                     }
-                    if(forinit == 1)
+                    if(forpostnum == 1)
                         strcat(forpost1, temp);
                     else
                         strcat(forpost2, temp);
                 }
                 else {
                     if(isAssign==0 && isArray==0) {
-                        if(strcmp("int32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
-                        else if(strcmp("float32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "fload %d\n", table[i].address[j]);
-                        else if(strcmp("bool", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
-                        else if(strcmp("array", table[i].type[j]) == 0)
+                        if(strcmp("array", table[i].type[j]) == 0 || strcmp("string", table[i].type[j]) == 0) {
                             fprintf(jasmin_file, "aload %d\n", table[i].address[j]);
+                        }
+                        else {
+                            fprintf(jasmin_file, "%sload %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
+                        }
                     }
                     else if(isAssign==0 && isArray==2) {
                         if(strcmp("array", table[i].type[j]) == 0) {
-                            if(strcmp("int32", table[i].element_type[j]) == 0)
-                                fprintf(jasmin_file, "iaload\n");
-                            else if(strcmp("float32", table[i].element_type[j]) == 0)
-                                fprintf(jasmin_file, "faload\n");
+                            fprintf(jasmin_file, "%saload\n", isForI(table[i].element_type[j], ""));
                         }
                     }
                     else if(isArray == 0) {
-                        if(strcmp("int32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
-                        else if(strcmp("float32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "fstore %d\n", table[i].address[j]);
-                        else if(strcmp("bool", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
+                        if(strcmp("string", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "astore %d\n", table[i].address[j]);
                         else if(strcmp("array", table[i].type[j]) == 0) {
                             if(strcmp("int32", table[i].element_type[j]) == 0)
                                 fprintf(jasmin_file, "iastore\n");
                             else if(strcmp("float32", table[i].element_type[j]) == 0)
                                 fprintf(jasmin_file, "fastore\n");
                         }
-                    } //fix will error
+                        else {
+                            fprintf(jasmin_file, "%sstore %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
+                        }
+                    }
                 }
                 if(isArray != 1)
                     isArray = 0;

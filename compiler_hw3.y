@@ -20,7 +20,15 @@
     int fornum = 0;
     int forinit = 0;
     int forpostnum = 0;
+    int forscope = 0;
+    int fortemp = 0;
+    int forglobal = 0;
+    int forinstr[100] = {0};
+    int forpostinstr[100] = {0};
     int ifnum = 0;
+    int iftemp = 0;
+    int ifglobal = 0;
+    int ifinstr[100] = {0};
     int scope_level = 0, next_level = 1;
     struct SymbolTable table[100];
     char *TYPE = "";
@@ -125,7 +133,7 @@ IncDecStmt
     : Expression INC { printf("INC\n");
                        char forpost[1024] = {'\0'};
                        if(strcmp($1, "int32")==0 || strcmp($1, "li_int32")==0) {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1\n");
                                strcat(forpost, "iadd\n");
                            }
@@ -135,7 +143,7 @@ IncDecStmt
                            }
                        }
                        else {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1.0\n");
                                strcat(forpost, "fadd\n");
                            }
@@ -156,7 +164,7 @@ IncDecStmt
     | Expression DEC { printf("DEC\n");
                        char forpost[1024] = {'\0'};
                        if(strcmp($1, "int32")==0 || strcmp($1, "li_int32")==0) {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1\n");
                                strcat(forpost, "isub\n");
                            }
@@ -166,7 +174,7 @@ IncDecStmt
                            }
                        }
                        else {
-                           if((forpostnum-1)==scope_level && forpostnum>0) {
+                           if(forscope==scope_level && forpostnum>0 && forpostinstr[fornum]==1) {
                                strcat(forpost, "ldc 1.0\n");
                                strcat(forpost, "fsub\n");
                            }
@@ -191,23 +199,13 @@ Block
 	| '{' Block_list '}' { dump_symbol(scope_level); 
                            scope_level--; 
                            next_level--; 
-                           if(fornum > 0) {
-                               if(forinit == 1) {
-                                   fprintf(jasmin_file, "%s", forpost1);
-                               }
-                               else if(forinit == 2) {
-                                   fprintf(jasmin_file, "%s", forpost2);
-                               }
-                               char temp[20];
-                               if(forinit > 0)
-                                   sprintf(temp, "L_for_begin_init%d", forinit);
-                               else
-                                   sprintf(temp, "L_for_begin%d", fornum);
-                               fprintf(jasmin_file, "goto %s\n", temp);
-                           }
-                           if(ifnum > 0) {
+                           printf("******************%d\n", scope_level);
+                           if(ifnum>iftemp && ifinstr[ifnum]==3) {
                                fprintf(jasmin_file, "goto L_if_exit%d\n", ifnum);
-                               fprintf(jasmin_file, "L_if_false%d:\n", ifnum);}}
+                               fprintf(jasmin_file, "L_if_false%d:\n", ifnum);
+                               ifinstr[ifnum] -= 2;
+                           }
+                        }
 ;
 
 Block_list
@@ -220,16 +218,25 @@ Block_item
 ;
 
 IfStmt
-    : IFsym Condition Block ELSE IfStmt { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum); 
+    : IFsym Condition Block ELSE IfStmt { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum);
+                                          ifinstr[ifnum] = 0;
                                           ifnum--; }
     | IFsym Condition Block ELSE Block  { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum); 
+                                          ifinstr[ifnum] = 0;
                                           ifnum--; }
     | IFsym Condition Block             { fprintf(jasmin_file, "L_if_exit%d:\n", ifnum);
+                                          ifinstr[ifnum] = 0;
                                           ifnum--; }  
 ;
 
 IFsym
-    : IF { ifnum++; }
+    : IF { if(ifnum == 0) {
+               ifnum = ifglobal;
+               iftemp = ifglobal;
+           }
+           ifnum++;
+           ifglobal++;
+           ifinstr[ifnum] = 4; }
 ;
 
 Condition
@@ -237,27 +244,62 @@ Condition
                        printf("error:%d: non-bool (type %s) used as for condition\n", yylineno+1, $1); 
                        HAS_ERROR = 1;
                    }
-                   if(fornum > 0) {
+                   if(fornum>fortemp && forinstr[fornum]==3) {
                        fprintf(jasmin_file, "ifeq L_for_exit%d\n", fornum);
+                       forinstr[fornum]--;
                    }
-                   if(ifnum > 0) {
-                       fprintf(jasmin_file, "ifeq L_if_false%d\n", ifnum);}
+                   if(ifnum>iftemp && ifinstr[ifnum]==4) {
+                       fprintf(jasmin_file, "ifeq L_if_false%d\n", ifnum);
+                       ifinstr[ifnum]--;
+                   }
                  }
 ;
 
 ForStmt
-    : FORsym Condition Block { fprintf(jasmin_file, "L_for_exit%d:\n", fornum); fornum--; }
-    | FORsym ForClause Block { fprintf(jasmin_file, "L_for_exit%d:\n", fornum); fornum--; forinit--; if(forinit==0) forpostnum = 0;}
+    : FORsym Condition Block { if(fornum>fortemp && forinstr[fornum]==2) {
+                               char temp[20];
+                               sprintf(temp, "L_for_begin%d", fornum);
+                               fprintf(jasmin_file, "goto %s\n", temp);
+                               forinstr[fornum]--;
+                               }
+                               fprintf(jasmin_file, "L_for_exit%d:\n", fornum); 
+                               forinstr[fornum] = 0; fornum--; }
+    | FORsym ForClause Block { if(fornum>fortemp && forinstr[fornum]==2) {
+                                    if(forinit == 1) {
+                                        fprintf(jasmin_file, "%s", forpost1);
+                                    }
+                                    else if(forinit == 2) {
+                                        fprintf(jasmin_file, "%s", forpost2);
+                                    }
+                                    char temp[20];
+                                    if(forinit > 0)
+                                        sprintf(temp, "L_for_begin_init%d", fornum);
+                                    else
+                                        sprintf(temp, "L_for_begin%d", fornum);
+                                    fprintf(jasmin_file, "goto %s\n", temp);
+                                    forinstr[fornum]--;
+                               }
+                               fprintf(jasmin_file, "L_for_exit%d:\n", fornum); 
+                               printf("^^^^^^^^^^ %d\n", forpostnum);
+                               forinstr[fornum] = 0; fornum--; forinit--; if(forinit==0) forpostnum = 0; }
 ;
 
 FORsym
-    : FOR { fornum++;
-            fprintf(jasmin_file, "L_for_begin%d:\n", fornum); }
+    : FOR { if(fornum == 0) {
+                fornum = forglobal;
+                fortemp = forglobal;
+            }
+            fornum++;
+            forglobal++;
+            forscope = scope_level;
+            forinstr[fornum] = 4;
+            fprintf(jasmin_file, "L_for_begin%d:\n", fornum); 
+            forinstr[fornum]--;}
 ;
 
 ForClause
     : InitStmt { forinit++;
-                 fprintf(jasmin_file, "L_for_begin_init%d:\n", forinit); } ';' Condition { forpostnum++;} ';' PostStmt 
+                 fprintf(jasmin_file, "L_for_begin_init%d:\n", fornum); } ';' Condition { forpostnum++; forpostinstr[fornum] = 1;} ';' PostStmt { forpostinstr[fornum] = 0;}
 ;
 
 InitStmt
@@ -462,47 +504,38 @@ Assign_op
 
 Expression
     : LogicalOrExpr { $$ = $1; }
-    | IDENT Assign_op Expression     { printf("%s\n", assign_operation); // fix will error
-                                       if(strcmp($3, "li_int32")==0)
-                                           $3 = "int32";
-                                       if(strcmp(assign_operation, "ADD_ASSIGN") == 0) {
+    | IDENT Assign_op Expression     { $$ = $1;
+                                       printf("%s\n", assign_operation);
+                                       $3 = li_int32_Change_int32($3);
+                                       
+                                       char temp;
+                                       if(strcmp($3, "float32") == 0)
+                                            temp = 'f';
+                                       else if(strcmp($3, "int32") == 0)
+                                            temp = 'i';
+                                       if(strcmp(assign_operation, "ASSIGN") == 0) {
+
+                                       }
+                                       else {
                                            lookup_symbol($1, "");
                                            fprintf(jasmin_file, "swap\n");
-                                           if(strcmp($3, "float32") == 0)
-                                               fprintf(jasmin_file, "fadd\n");
-                                           else if(strcmp($3, "int32") == 0)
-                                               fprintf(jasmin_file, "iadd\n");
+                                           if(strcmp(assign_operation, "ADD_ASSIGN") == 0) {
+                                               fprintf(jasmin_file, "%cadd\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "SUB_ASSIGN") == 0) {
+                                               fprintf(jasmin_file, "%csub\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "MUL_ASSIGN") == 0) {
+                                               fprintf(jasmin_file, "%cmul\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "QUO_ASSIGN") == 0) {
+                                                fprintf(jasmin_file, "%cdiv\n", temp);
+                                           }
+                                           else if(strcmp(assign_operation, "REM_ASSIGN") == 0) {
+                                                fprintf(jasmin_file, "%crem\n", temp);
+                                           }
                                        }
-                                       else if(strcmp(assign_operation, "SUB_ASSIGN") == 0) {
-                                           lookup_symbol($1, "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp($3, "float32") == 0)
-                                               fprintf(jasmin_file, "fsub\n");
-                                           else if(strcmp($3, "int32") == 0)
-                                               fprintf(jasmin_file, "isub\n");
-                                       }
-                                       else if(strcmp(assign_operation, "MUL_ASSIGN") == 0) {
-                                           lookup_symbol($1, "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp($3, "float32") == 0)
-                                               fprintf(jasmin_file, "fmul\n");
-                                           else if(strcmp($3, "int32") == 0)
-                                               fprintf(jasmin_file, "imul\n");
-                                       }
-                                       else if(strcmp(assign_operation, "QUO_ASSIGN") == 0) {
-                                           lookup_symbol($1, "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp($3, "float32") == 0)
-                                               fprintf(jasmin_file, "fdiv\n");
-                                           else if(strcmp($3, "int32") == 0)
-                                               fprintf(jasmin_file, "idiv\n");
-                                       }
-                                       else if(strcmp(assign_operation, "REM_ASSIGN") == 0) {
-                                           lookup_symbol($1, "");
-                                           fprintf(jasmin_file, "swap\n");
-                                           if(strcmp($3, "int32") == 0)
-                                               fprintf(jasmin_file, "irem\n");
-                                       }
+                                       
                                        isAssign = 1; 
                                        lookup_symbol($1, "");
                                        isAssign = 0; }
@@ -613,19 +646,18 @@ static void create_symbol(char* name, char* type, int level) {
         }        
     }
 
-    if(strcmp("int32", table[level].type[num]) == 0)
-        fprintf(jasmin_file, "istore %d\n", table[level].address[num]);
-    else if(strcmp("float32", table[level].type[num]) == 0)
-        fprintf(jasmin_file, "fstore %d\n", table[level].address[num]);
-    else if(strcmp("bool", table[level].type[num]) == 0)
-        fprintf(jasmin_file, "istore %d\n", table[level].address[num]);
+    if(strcmp("string", table[level].type[num]) == 0)
+        fprintf(jasmin_file, "astore %d\n", table[level].address[num]);
     else if(strcmp("array", table[level].type[num]) == 0) {
         if(strcmp("int32", table[level].element_type[num]) == 0)
             fprintf(jasmin_file, "newarray int\n");
         else if(strcmp("float32", table[level].element_type[num]) == 0)
             fprintf(jasmin_file, "newarray float\n");
         fprintf(jasmin_file, "astore %d\n", table[level].address[num]);
-    } // fix will error
+    }
+    else {
+        fprintf(jasmin_file, "%sstore %d\n", isForI(table[level].type[num], ""), table[level].address[num]);
+    }
 
     isAssign = 0;
 }
@@ -640,7 +672,7 @@ static void lookup_symbol(char* name, char* type) {
         for(int j=0; j<num; j++) {
             if(strcmp(name, table[i].name[j])==0 && (strcmp(type, table[i].type[j])==0 || strcmp(type, "")==0)) {
                 printf("IDENT (name=%s, address=%d)\n", name, table[i].address[j]);
-                if((forpostnum-1)==scope_level && forpostnum>0) {
+                if(scope_level==forscope && forpostnum>0 && forpostinstr[fornum]==1) {
                     char temp[256] = {'\0'};
                     if(isAssign==0 && isArray==0) {
                         if(strcmp("array", table[i].type[j]) == 0) {
@@ -661,44 +693,38 @@ static void lookup_symbol(char* name, char* type) {
                             sprintf(temp, "%sstore %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
                         }
                     }
-                    if(forinit == 1)
+                    if(forpostnum == 1)
                         strcat(forpost1, temp);
                     else
                         strcat(forpost2, temp);
                 }
                 else {
                     if(isAssign==0 && isArray==0) {
-                        if(strcmp("int32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
-                        else if(strcmp("float32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "fload %d\n", table[i].address[j]);
-                        else if(strcmp("bool", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "iload %d\n", table[i].address[j]);
-                        else if(strcmp("array", table[i].type[j]) == 0)
+                        if(strcmp("array", table[i].type[j]) == 0 || strcmp("string", table[i].type[j]) == 0) {
                             fprintf(jasmin_file, "aload %d\n", table[i].address[j]);
+                        }
+                        else {
+                            fprintf(jasmin_file, "%sload %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
+                        }
                     }
                     else if(isAssign==0 && isArray==2) {
                         if(strcmp("array", table[i].type[j]) == 0) {
-                            if(strcmp("int32", table[i].element_type[j]) == 0)
-                                fprintf(jasmin_file, "iaload\n");
-                            else if(strcmp("float32", table[i].element_type[j]) == 0)
-                                fprintf(jasmin_file, "faload\n");
+                            fprintf(jasmin_file, "%saload\n", isForI(table[i].element_type[j], ""));
                         }
                     }
                     else if(isArray == 0) {
-                        if(strcmp("int32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
-                        else if(strcmp("float32", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "fstore %d\n", table[i].address[j]);
-                        else if(strcmp("bool", table[i].type[j]) == 0)
-                            fprintf(jasmin_file, "istore %d\n", table[i].address[j]);
+                        if(strcmp("string", table[i].type[j]) == 0)
+                            fprintf(jasmin_file, "astore %d\n", table[i].address[j]);
                         else if(strcmp("array", table[i].type[j]) == 0) {
                             if(strcmp("int32", table[i].element_type[j]) == 0)
                                 fprintf(jasmin_file, "iastore\n");
                             else if(strcmp("float32", table[i].element_type[j]) == 0)
                                 fprintf(jasmin_file, "fastore\n");
                         }
-                    } //fix will error
+                        else {
+                            fprintf(jasmin_file, "%sstore %d\n", isForI(table[i].type[j], ""), table[i].address[j]);
+                        }
+                    }
                 }
                 if(isArray != 1)
                     isArray = 0;
